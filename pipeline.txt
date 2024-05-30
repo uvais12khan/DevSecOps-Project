@@ -12,10 +12,10 @@ pipeline{
             steps{
                 cleanWs()
             }
-        }
-        stage('Checkout from Git'){
+        }   
+        stage('Checkout form Git'){
             steps{
-                git branch: 'main', url: 'https://github.com/Aj7Ay/Netflix-clone.git'
+                git branch: 'main', url: 'https://github.com/uvais12khan/DevSecOps-Project.git'
             }
         }
         stage("Sonarqube Analysis "){
@@ -23,15 +23,15 @@ pipeline{
                 withSonarQubeEnv('sonar-server') {
                     sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Netflix \
                     -Dsonar.projectKey=Netflix '''
-                }
+                }    
             }
         }
         stage("quality gate"){
-           steps {
+            steps {
                 script {
                     waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token' 
                 }
-            } 
+            }
         }
         stage('Install Dependencies') {
             steps {
@@ -53,46 +53,37 @@ pipeline{
             steps{
                 script{
                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){   
-                       sh "docker build --build-arg TMDB_V3_API_KEY=<yourtmdbapikey> -t netflix ."
-                       sh "docker tag netflix nasi101/netflix:latest "
-                       sh "docker push nasi101/netflix:latest "
+                       sh "docker build --build-arg TMDB_V3_API_KEY=a4b7e62de0d9121ffa1cebcdbcdaa285 -t netflix ."
+                       sh "docker tag netflix uvais12khan/netflix:latest "
+                       sh "docker push uvais12khan/netflix:latest "
                     }
                 }
             }
         }
-        stage("TRIVY"){
+        stage("Scan Docker Image with TRIVY"){
             steps{
-                sh "trivy image nasi101/netflix:latest > trivyimage.txt" 
+                sh "trivy image uvais12khan/netflix:latest > trivy.txt" 
             }
         }
         stage('Deploy to container'){
             steps{
-                sh 'docker run -d -p 8081:80 nasi101/netflix:latest'
+                sh 'docker run -d --name netflix -p 8081:80 uvais12khan/netflix:latest'
             }
         }
-        stage('Deploy to kubernets'){
-            steps{
-                script{
-                    dir('Kubernetes') {
-                        withKubeConfig(caCertificate: '', clusterName: '', contextName: '', credentialsId: 'k8s', namespace: '', restrictKubeConfigAccess: false, serverUrl: '') {
-                                sh 'kubectl apply -f deployment.yml'
-                                sh 'kubectl apply -f service.yml'
-                        }   
-                    }
-                }
-            }
-        }
-
     }
     post {
-     always {
-        emailext attachLog: true,
-            subject: "'${currentBuild.result}'",
-            body: "Project: ${env.JOB_NAME}<br/>" +
-                "Build Number: ${env.BUILD_NUMBER}<br/>" +
-                "URL: ${env.BUILD_URL}<br/>",
-            to: 'iambatmanthegoat@gmail.com',                                #change mail here
-            attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+        always {
+            echo 'This will always run'
+        }
+        success {
+            mail to: 'ukfriends33@gmail.com',
+            subject: 'Jenkins Pipeline Status: SUCCESSFUL',
+            body: "Your Jenkins Build pipeline has been completed successfully."
+        }
+        failure {
+            mail to: 'ukfriends33@gmail.com',
+                 subject: "Jenkins Pipeline Status: FAILED",
+                 body: "Your Jenkins Build pipeline has been failed. Please check the logs for more information."
         }
     }
 }
